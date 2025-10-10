@@ -2,11 +2,13 @@ package com.puzzlix.solid_task._global.dto;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 /**
  * 모든 API 응답을 감싸는 공통 DTO 설계
  * @param <T>
  */
+@Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class CommonResponseDto<T> {
     private boolean success;
