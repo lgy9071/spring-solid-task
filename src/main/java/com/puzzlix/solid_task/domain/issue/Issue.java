@@ -8,10 +8,19 @@ package com.puzzlix.solid_task.domain.issue;
 // 보고자 (누가 요청 했는지)
 // 담당자 (누가 처리 하는지)
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Issue {
 
     private Long id;
-    private String name;
+    private String title;
     private String description;
     private IssueStatus issueStatus;
 
