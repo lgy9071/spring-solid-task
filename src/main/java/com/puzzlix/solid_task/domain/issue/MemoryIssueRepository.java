@@ -1,6 +1,5 @@
+/*
 package com.puzzlix.solid_task.domain.issue;
-
-import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +8,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Repository // 이 클래스가 데이터 저장소 역할을 하는 스프링 빈임을 선언함
+// 더 이상 사용 안함!
+//@Repository // 이 클래스가 데이터 저장소 역할을 하는 스프링 빈임을 선언함
 public class MemoryIssueRepository implements IssueRepository{
 
     // 동시성 문제를 방지하기 위해 ConcurrentHashMap 사용
@@ -41,3 +41,4 @@ public class MemoryIssueRepository implements IssueRepository{
         return new ArrayList<>(store.values());
     }
 }
+*/
