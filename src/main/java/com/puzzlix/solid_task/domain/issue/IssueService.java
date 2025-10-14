@@ -98,6 +98,7 @@ public class IssueService {
         newIssue.setReporter(reporter);
         newIssue.setProject(project);
         newIssue.setIssueStatus(IssueStatus.TODO); // 시스템에서 설정 (최초 등록)
+        System.out.println("11111111111111");
         return issueRepository.save(newIssue);
     }
 
