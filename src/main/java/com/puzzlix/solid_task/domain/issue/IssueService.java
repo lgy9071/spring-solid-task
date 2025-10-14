@@ -3,6 +3,7 @@ package com.puzzlix.solid_task.domain.issue;
 import com.puzzlix.solid_task.domain.issue.dto.IssueRequest;
 import com.puzzlix.solid_task.domain.project.Project;
 import com.puzzlix.solid_task.domain.project.ProjectRepository;
+import com.puzzlix.solid_task.domain.user.Role;
 import com.puzzlix.solid_task.domain.user.User;
 import com.puzzlix.solid_task.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import java.util.NoSuchElementException;
 
 @Service // IoC
 @RequiredArgsConstructor
+@Transactional
 public class IssueService {
 
     // 구체 클래스가 아닌, IssueRepository 라는 역할(인터페이스)에만 의존한다.
@@ -21,19 +23,41 @@ public class IssueService {
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
 
-    // 수정 기능 중에 Update <--/ 이슈 Id
-    // 1. 이슈 존재 여부 확인 -- SELECT
-    // 2.
-    // 3.
-    // 4. JPA 사용 (수정 전략) --> dirty checking
-    public Issue updateIssue(Long issueId, IssueRequest.Update request){
+    public Issue updateIssueStatus(Long issueId, IssueStatus status, String requestUserEmail, Role userRole){
+        // 인가 처리
         Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new NoSuchElementException("해당 아이디의 이슈를 찾을 수 없습니다."));
+                .orElseThrow(() -> new NoSuchElementException("해당 ID의 이슈를 찾을 수 없습니다."));
 
-        // 넘어온 값이 담당자 할당 여부에 따로 분기 처리 되어야 함
+        // 관리자가 아니거나 담당자가 아니면 상태를 변경 못함
+        if(userRole != Role.ADMIN && issue.getAssignee().getEmail().equals(requestUserEmail)){
+            throw new SecurityException("이슈 상태를 변경할 권한이 없습니다.");
+        }
+        // 더티 체킹 사용
+        issue.setIssueStatus(status);
+        return issue;
+
+    }
+
+
+    public Issue updateIssue(Long issueId, IssueRequest.Update request, String requestUserEmail) {
+
+        User requestUser = userRepository.findByEmail(requestUserEmail)
+                .orElseThrow(() -> new NoSuchElementException("요청한 사용자를 찾을 수 없습니다"));
+
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new NoSuchElementException("해당 ID의 이슈를 찾을 수 없습니다"));
+
+        // 인가 처리 -> 관리자라면 수정 가능 하게 변경하자.
+        // 인가 로직
+        boolean isAdmin = requestUser.getRole() == Role.ADMIN;
+        boolean isReporter = requestUser.getId().equals(issue.getReporter().getId());
+        if(isAdmin == false && isReporter == false) {
+            throw new SecurityException("이슈를 수정할 권한이 없습니다.");
+        }
+
         if(request.getAssigneeId() != null) {
             User assignee = userRepository.findById(request.getAssigneeId())
-                    .orElseThrow(() -> new NoSuchElementException("해당 ID에 담당자를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new NoSuchElementException("해당 ID에 담당자를 찾을 수 없습니다"));
             // 담당자 할당
             issue.setAssignee(assignee);
         } else {
@@ -44,44 +68,36 @@ public class IssueService {
         issue.setTitle(request.getTitle());
         issue.setDescription(request.getDescription());
 
-        // JPA 변경 감지 (Dirty Checking) 덕분에 save() 명시적으로 호출 하지 않아도
-        // 트랜잭션이 끝날 때 변경된 내용이 DB에 자동으로 반영 된다.
+        // JPA 변경 감지(Dirty Checking) 덕분에 save() 명시적으로 호출 하지 않아도
+        // 트랜잭션이 끝날 때 변경된 내용이 DB 에 자동으로 반영 된다.
         return issue;
     }
-
-    public void deleteIssue(Long issueId){
-        if(!issueRepository.existsById(issueId)){
-            throw new NoSuchElementException("해당 ID의 이슈를 찾을 수 없습니다.");
+    // 인가 처리 해주세요 - ADMIN 만 삭제 가능
+    // 지금 접근한 유저 정보가 필요 하다.
+    public void deleteIssue(Long issueId, String requestUserEmail) {
+        if(!issueRepository.existsById(issueId)) {
+            throw new NoSuchElementException("해당 ID의 이슈를 찾을 수 없습니다");
         }
-        //추후 고민..
         issueRepository.deleteById(issueId);
+        // requestUserEmail 이력 관리 ( 누가 삭제했는지 관리 가능)
     }
-
-
-    // DI 처리 함
-//    public IssueService(IssueRepository issueRepository) {
-//        this.issueRepository = issueRepository;
-//    }
 
     // 이슈 생성 로직
     public Issue createIssue(IssueRequest.Create request) {
 
         // 보고자 ID -> 실제 회원이 있는가?
         User reporter = userRepository.findById(request.getReporterId())
-                .orElseThrow(() -> new NoSuchElementException("해당 ID의 사용자를 찾을 수 없습니다."));
-        // 프로젝트 ID 검증
+                .orElseThrow(() -> new NoSuchElementException("해당 ID의 사용자를 찾을 수 없습니다"));
+        // 프로젝 ID 검증
         Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(() -> new NoSuchElementException("해당 ID의 프로젝트를 찾을 수 없습니다."));
-
+                .orElseThrow(() -> new NoSuchElementException("해당 ID의 프로젝트를 찾을 수 없습니다"));
 
         Issue newIssue = new Issue();
         newIssue.setTitle(request.getTitle());
         newIssue.setDescription(request.getDescription());
-        newIssue.setIssueStatus(IssueStatus.TODO);
-        newIssue.setProject(project);       // Project 연관관계
-        newIssue.setReporter(reporter);     // User 연관관계 (필드가 User reporter 인 경우)
-        // newIssue.setReporterId(reporter.getId()); // reporterId만 있을 때
-
+        newIssue.setReporter(reporter);
+        newIssue.setProject(project);
+        newIssue.setIssueStatus(IssueStatus.TODO); // 시스템에서 설정 (최초 등록)
         return issueRepository.save(newIssue);
     }
 
