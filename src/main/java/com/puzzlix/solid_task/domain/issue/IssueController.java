@@ -7,10 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -20,6 +17,20 @@ import java.util.List;
 public class IssueController {
 
     private final IssueService issueService;
+
+    /**
+     *이슈 수정 API
+     * PUT /api/issues/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<CommonResponseDto<IssueResponse.FindById>> updateIssue(@PathVariable(name = "id") Long id,
+                                                                                 @RequestBody IssueRequest.Update request){
+        Issue issue = issueService.updateIssue(id, request);
+
+        return ResponseEntity
+                .ok(CommonResponseDto.success(new IssueResponse.FindById(issue), "이슈가 성공적으로 변경 되었습니다."));
+    }
+
 
     /*
     * 이슈 생성 API
